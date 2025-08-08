@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-dummy-writer
+  labels:
+    app: mysql-dummy-writer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-dummy-writer
+  template:
+    metadata:
+      labels:
+        app: mysql-dummy-writer
+    spec:
+      containers:
+      - name: writer
+        image: docker.io/egegunes/mysql-dummy-writer:1753096660
+        env:
+        - name: MYSQL_HOST
+          value: cluster1-mysql-primary
+        - name: MYSQL_DB
+          value: test
+        - name: MYSQL_TABLE
+          value: t1
+        - name: MYSQL_USER
+          value: root
+        - name: MYSQL_PASS
+          valueFrom:
+            secretKeyRef:
+              name: cluster1-secrets
+              key: root
+        command:
+        - ./mysql-dummy-writer
+        args:
+        - -h
+        - $(MYSQL_HOST)
+        - -P
+        - '3306'
+        - -u
+        - $(MYSQL_USER)
+        - -p
+        - $(MYSQL_PASS)
+        - -d
+        - $(MYSQL_DB)
+        - -t
+        - $(MYSQL_TABLE)
+        - -w
+        - '1'
+        - -r
+        - '2'
+        - -dt
+        - '5'
+        - -rt
+        - '5'
+        - -wt
+        - '5'
