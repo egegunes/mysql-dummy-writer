@@ -195,7 +195,6 @@ func writer(ctx context.Context, id int, cfg config) {
 		}
 
 		if cfg.reconnect {
-			log.Printf("writer %d: connecting to db", id)
 			db, err = connectToDB(ctx, cfg, cfg.database)
 			if err != nil {
 				log.Printf("writer %d: failed to connect to db: %v", id, err)
@@ -211,11 +210,17 @@ func writer(ctx context.Context, id int, cfg config) {
 
 		_, err = db.ExecContext(ctx, fmt.Sprintf("INSERT INTO %s (b) VALUES (?)", cfg.table), randSeq(32))
 		if err != nil {
-			log.Printf("writer %d: failed to insert: %v\n", id, err)
+			log.Printf("writer %d: failed to insert: %v", id, err)
 			continue
 		}
 
 		log.Printf("writer %d: write succeed on %s", id, hostname)
+
+		if cfg.reconnect {
+			if err := db.Close(); err != nil {
+				log.Printf("writer %d: failed to close connection: %v", id, err)
+			}
+		}
 	}
 }
 
@@ -239,7 +244,6 @@ func reader(ctx context.Context, id int, cfg config) {
 		}
 
 		if cfg.reconnect {
-			log.Printf("reader %d: connecting to db", id)
 			db, err = connectToDB(ctx, cfg, cfg.database)
 			if err != nil {
 				log.Printf("reader %d: failed to connect to db: %v", id, err)
@@ -259,10 +263,16 @@ func reader(ctx context.Context, id int, cfg config) {
 		var b string
 		err = db.QueryRowContext(ctx, query).Scan(&rowId, &b)
 		if err != nil {
-			log.Printf("reader %d: failed to select: %v\n", id, err)
+			log.Printf("reader %d: failed to select: %v", id, err)
 			continue
 		}
 
 		log.Printf("reader %d: read succeed on %s", id, hostname)
+
+		if cfg.reconnect {
+			if err := db.Close(); err != nil {
+				log.Printf("reader %d: failed to close connection: %v", id, err)
+			}
+		}
 	}
 }
